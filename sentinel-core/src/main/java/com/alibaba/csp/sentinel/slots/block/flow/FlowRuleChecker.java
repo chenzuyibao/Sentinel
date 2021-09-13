@@ -15,14 +15,12 @@
  */
 package com.alibaba.csp.sentinel.slots.block.flow;
 
-import java.util.Collection;
-
 import com.alibaba.csp.sentinel.cluster.ClusterStateManager;
-import com.alibaba.csp.sentinel.cluster.server.EmbeddedClusterTokenServerProvider;
-import com.alibaba.csp.sentinel.cluster.client.TokenClientProvider;
-import com.alibaba.csp.sentinel.cluster.TokenResultStatus;
 import com.alibaba.csp.sentinel.cluster.TokenResult;
+import com.alibaba.csp.sentinel.cluster.TokenResultStatus;
 import com.alibaba.csp.sentinel.cluster.TokenService;
+import com.alibaba.csp.sentinel.cluster.client.TokenClientProvider;
+import com.alibaba.csp.sentinel.cluster.server.EmbeddedClusterTokenServerProvider;
 import com.alibaba.csp.sentinel.context.Context;
 import com.alibaba.csp.sentinel.log.RecordLog;
 import com.alibaba.csp.sentinel.node.DefaultNode;
@@ -33,6 +31,8 @@ import com.alibaba.csp.sentinel.slots.block.RuleConstant;
 import com.alibaba.csp.sentinel.slots.clusterbuilder.ClusterBuilderSlot;
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.util.function.Function;
+
+import java.util.Collection;
 
 /**
  * Rule checker for flow control rules.
@@ -46,8 +46,10 @@ public class FlowRuleChecker {
         if (ruleProvider == null || resource == null) {
             return;
         }
+        // 获取到指定资源的所有流控规则
         Collection<FlowRule> rules = ruleProvider.apply(resource.getName());
         if (rules != null) {
+            // 逐个应用流控规则，若无法通过，则抛出异常，后续规则不再应用
             for (FlowRule rule : rules) {
                 if (!canPassCheck(rule, context, node, count, prioritized)) {
                     throw new FlowException(rule.getLimitApp(), rule);
@@ -63,25 +65,32 @@ public class FlowRuleChecker {
 
     public boolean canPassCheck(/*@NonNull*/ FlowRule rule, Context context, DefaultNode node, int acquireCount,
                                                     boolean prioritized) {
+        // 从规则中获取要先定的来源
         String limitApp = rule.getLimitApp();
+        // 若来源为null,则请求直接通过
         if (limitApp == null) {
             return true;
         }
 
+        // 集群流控
         if (rule.isClusterMode()) {
             return passClusterCheck(rule, context, node, acquireCount, prioritized);
         }
 
+        // 单机流控
         return passLocalCheck(rule, context, node, acquireCount, prioritized);
     }
 
     private static boolean passLocalCheck(FlowRule rule, Context context, DefaultNode node, int acquireCount,
                                           boolean prioritized) {
+        // 通过规则形成选择出的规则node
         Node selectedNode = selectNodeByRequesterAndStrategy(rule, context, node);
+        // 若没有选择出node，说明没有规则，则直接返回true
         if (selectedNode == null) {
             return true;
         }
 
+        // 使用规则进行逐项检测
         return rule.getRater().canPass(selectedNode, acquireCount, prioritized);
     }
 

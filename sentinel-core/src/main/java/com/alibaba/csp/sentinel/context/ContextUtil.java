@@ -15,10 +15,6 @@
  */
 package com.alibaba.csp.sentinel.context;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
-
 import com.alibaba.csp.sentinel.Constants;
 import com.alibaba.csp.sentinel.EntryType;
 import com.alibaba.csp.sentinel.SphO;
@@ -29,6 +25,10 @@ import com.alibaba.csp.sentinel.node.EntranceNode;
 import com.alibaba.csp.sentinel.node.Node;
 import com.alibaba.csp.sentinel.slotchain.StringResourceWrapper;
 import com.alibaba.csp.sentinel.slots.nodeselector.NodeSelectorSlot;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Utility class to get or create {@link Context} in current thread.
@@ -118,11 +118,17 @@ public class ContextUtil {
     }
 
     protected static Context trueEnter(String name, String origin) {
+        // 从ThreadLocal中获取Context
         Context context = contextHolder.get();
+        // 若ThreadLocal中没有context,则尝试着从缓存map中获取
         if (context == null) {
+            // 缓存map的key为context名称，value为EntranceNode
             Map<String, DefaultNode> localCacheNameMap = contextNameNodeMap;
+            // 获取EntranceNode
+            // 双重检测，防止并发
             DefaultNode node = localCacheNameMap.get(name);
             if (node == null) {
+                // 若缓存map的size大于context数量的最大阈值，则直接返回NULL_CONTEXT
                 if (localCacheNameMap.size() > Constants.MAX_CONTEXT_NAME_SIZE) {
                     setNullContext();
                     return NULL_CONTEXT;
@@ -135,10 +141,15 @@ public class ContextUtil {
                                 setNullContext();
                                 return NULL_CONTEXT;
                             } else {
+                                // 创建一个EntranceNode
                                 node = new EntranceNode(new StringResourceWrapper(name, EntryType.IN), null);
                                 // Add entrance node.
+                                // 将新建的node添加到ROOT
                                 Constants.ROOT.addChild(node);
 
+                                // 将新建node写入缓存map
+                                // 为了防止"迭代稳定性问题"-iterable stable 即map并发操作问题
+                                // 所以新建map，再替换引用
                                 Map<String, DefaultNode> newMap = new HashMap<>(contextNameNodeMap.size() + 1);
                                 newMap.putAll(contextNameNodeMap);
                                 newMap.put(name, node);
@@ -150,8 +161,10 @@ public class ContextUtil {
                     }
                 }
             }
+            // 将context的name与EntranceNode封装为Context
             context = new Context(node, name);
             context.setOrigin(origin);
+            // 写入ThreadLocal
             contextHolder.set(context);
         }
 

@@ -15,13 +15,13 @@
  */
 package com.alibaba.csp.sentinel.slots.statistic.base;
 
+import com.alibaba.csp.sentinel.util.AssertUtil;
+import com.alibaba.csp.sentinel.util.TimeUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReentrantLock;
-
-import com.alibaba.csp.sentinel.util.AssertUtil;
-import com.alibaba.csp.sentinel.util.TimeUtil;
 
 /**
  * <p>
@@ -40,8 +40,17 @@ import com.alibaba.csp.sentinel.util.TimeUtil;
  */
 public abstract class LeapArray<T> {
 
+    /**
+     * 样本窗口长度
+     */
     protected int windowLengthInMs;
+    /**
+     * 总时间跨度中的桶的数量 = intervalInMs(总时间跨度) / windowLengthInMs(样本窗口长度)
+     */
     protected int sampleCount;
+    /**
+     * 总时间跨度
+     */
     protected int intervalInMs;
     private double intervalInSecond;
 
@@ -98,9 +107,11 @@ public abstract class LeapArray<T> {
     protected abstract WindowWrap<T> resetWindowTo(WindowWrap<T> windowWrap, long startTime);
 
     private int calculateTimeIdx(/*@Valid*/ long timeMillis) {
+        // 计算出当前时间在哪个样本窗口
         long timeId = timeMillis / windowLengthInMs;
         // Calculate current index so we can map the timestamp to the leap array.
-        return (int)(timeId % array.length());
+        // 计算当前索引，以便我们可以将时间戳映射到跳跃数组。
+        return (int) (timeId % array.length());
     }
 
     protected long calculateWindowStart(/*@Valid*/ long timeMillis) {
@@ -118,8 +129,10 @@ public abstract class LeapArray<T> {
             return null;
         }
 
+        // 计算当前时间所在的样本窗口ID
         int idx = calculateTimeIdx(timeMillis);
         // Calculate current bucket start time.
+        // 计算当前存储桶开始时间
         long windowStart = calculateWindowStart(timeMillis);
 
         /*
@@ -130,6 +143,7 @@ public abstract class LeapArray<T> {
          * (3) Bucket is deprecated, then reset current bucket and clean all deprecated buckets.
          */
         while (true) {
+            // 获取当前时间所在的样本窗口
             WindowWrap<T> old = array.get(idx);
             if (old == null) {
                 /*
@@ -333,11 +347,14 @@ public abstract class LeapArray<T> {
         int size = array.length();
         List<T> result = new ArrayList<T>(size);
 
+        // 逐个遍历array中的每一个样本窗口实例
         for (int i = 0; i < size; i++) {
             WindowWrap<T> windowWrap = array.get(i);
+            // 若当前实例为空或者已经过时，则跳过
             if (windowWrap == null || isWindowDeprecated(timeMillis, windowWrap)) {
                 continue;
             }
+            // 将当前遍历的样本窗口统计的数据记录到result
             result.add(windowWrap.value());
         }
         return result;

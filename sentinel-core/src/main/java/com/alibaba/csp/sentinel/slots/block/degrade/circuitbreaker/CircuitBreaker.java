@@ -16,12 +16,11 @@
 package com.alibaba.csp.sentinel.slots.block.degrade.circuitbreaker;
 
 import com.alibaba.csp.sentinel.context.Context;
-import com.alibaba.csp.sentinel.slotchain.ResourceWrapper;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
 
 /**
  * <p>Basic <a href="https://martinfowler.com/bliki/CircuitBreaker.html">circuit breaker</a> interface.</p>
- *
+ * Sentinel1.8中，将三种熔断策略（慢调用/异常比/异常数）封装为两种熔断器：响应时间熔断器、异常熔断器
  * @author Eric Zhao
  */
 public interface CircuitBreaker {
@@ -43,6 +42,7 @@ public interface CircuitBreaker {
 
     /**
      * Get current state of the circuit breaker.
+     * 获取断路器的当前状态。
      *
      * @return current state of the circuit breaker
      */
@@ -51,6 +51,8 @@ public interface CircuitBreaker {
     /**
      * <p>Record a completed request with the context and handle state transformation of the circuit breaker.</p>
      * <p>Called when a <strong>passed</strong> invocation finished.</p>
+     * 使用上下文记录已完成的请求并处理断路器的状态转换。
+     * 当传递的调用完成时调用。
      *
      * @param context context of current invocation
      */
@@ -62,6 +64,7 @@ public interface CircuitBreaker {
     enum State {
         /**
          * In {@code OPEN} state, all requests will be rejected until the next recovery time point.
+         * 在OPEN状态下，所有请求都将被拒绝，直到下一个恢复时间点。
          */
         OPEN,
         /**
@@ -70,11 +73,14 @@ public interface CircuitBreaker {
          * will re-transform to the {@code OPEN} state and wait for the next recovery time point;
          * otherwise the resource will be regarded as "recovered" and the circuit breaker
          * will cease cutting off requests and transform to {@code CLOSED} state.
+         * 在HALF_OPEN状态下，断路器将允许“探测”调用。 如果按照策略调用异常（比如很慢），则断路器会重新转换为OPEN状态，等待下一个恢复时间点；
+         * 否则资源将被视为“已恢复”，断路器将停止切断请求并转换为CLOSED状态。
          */
         HALF_OPEN,
         /**
          * In {@code CLOSED} state, all requests are permitted. When current metric value exceeds the threshold,
          * the circuit breaker will transform to {@code OPEN} state.
+         * 在CLOSED状态下，允许所有请求。 当当前度量值超过阈值时，断路器将转换为OPEN状态。
          */
         CLOSED
     }

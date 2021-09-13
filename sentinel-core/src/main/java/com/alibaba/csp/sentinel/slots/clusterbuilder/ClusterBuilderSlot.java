@@ -15,9 +15,6 @@
  */
 package com.alibaba.csp.sentinel.slots.clusterbuilder;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.alibaba.csp.sentinel.Constants;
 import com.alibaba.csp.sentinel.EntryType;
 import com.alibaba.csp.sentinel.context.Context;
@@ -32,6 +29,9 @@ import com.alibaba.csp.sentinel.slotchain.ProcessorSlotChain;
 import com.alibaba.csp.sentinel.slotchain.ResourceWrapper;
 import com.alibaba.csp.sentinel.slotchain.StringResourceWrapper;
 import com.alibaba.csp.sentinel.spi.Spi;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * <p>
@@ -101,6 +101,7 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
             context.getCurEntry().setOriginNode(originNode);
         }
 
+        // 进入下一个节点，StatisticSlot
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
     }
 

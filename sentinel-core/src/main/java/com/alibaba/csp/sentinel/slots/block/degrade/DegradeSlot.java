@@ -15,8 +15,6 @@
  */
 package com.alibaba.csp.sentinel.slots.block.degrade;
 
-import java.util.List;
-
 import com.alibaba.csp.sentinel.Constants;
 import com.alibaba.csp.sentinel.Entry;
 import com.alibaba.csp.sentinel.context.Context;
@@ -27,6 +25,8 @@ import com.alibaba.csp.sentinel.slotchain.ResourceWrapper;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.slots.block.degrade.circuitbreaker.CircuitBreaker;
 import com.alibaba.csp.sentinel.spi.Spi;
+
+import java.util.List;
 
 /**
  * A {@link ProcessorSlot} dedicates to circuit breaking.
@@ -40,17 +40,21 @@ public class DegradeSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count,
                       boolean prioritized, Object... args) throws Throwable {
+        // 完成熔断降级检测
         performChecking(context, resourceWrapper);
 
+        // 触发下一个节点
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
     }
 
     void performChecking(Context context, ResourceWrapper r) throws BlockException {
+        // 获取到当前资源的所有熔断器
         List<CircuitBreaker> circuitBreakers = DegradeRuleManager.getCircuitBreakers(r.getName());
         if (circuitBreakers == null || circuitBreakers.isEmpty()) {
             return;
         }
         for (CircuitBreaker cb : circuitBreakers) {
+            // 若没有通过当前熔断器，则直接抛出异常
             if (!cb.tryPass(context)) {
                 throw new DegradeException(cb.getRule().getLimitApp(), cb.getRule());
             }

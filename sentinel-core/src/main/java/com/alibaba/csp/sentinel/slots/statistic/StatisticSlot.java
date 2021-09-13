@@ -15,22 +15,22 @@
  */
 package com.alibaba.csp.sentinel.slots.statistic;
 
-import java.util.Collection;
-
-import com.alibaba.csp.sentinel.node.Node;
-import com.alibaba.csp.sentinel.slotchain.ProcessorSlotEntryCallback;
-import com.alibaba.csp.sentinel.slotchain.ProcessorSlotExitCallback;
-import com.alibaba.csp.sentinel.slots.block.flow.PriorityWaitException;
-import com.alibaba.csp.sentinel.spi.Spi;
-import com.alibaba.csp.sentinel.util.TimeUtil;
 import com.alibaba.csp.sentinel.Constants;
 import com.alibaba.csp.sentinel.EntryType;
 import com.alibaba.csp.sentinel.context.Context;
 import com.alibaba.csp.sentinel.node.ClusterNode;
 import com.alibaba.csp.sentinel.node.DefaultNode;
+import com.alibaba.csp.sentinel.node.Node;
 import com.alibaba.csp.sentinel.slotchain.AbstractLinkedProcessorSlot;
+import com.alibaba.csp.sentinel.slotchain.ProcessorSlotEntryCallback;
+import com.alibaba.csp.sentinel.slotchain.ProcessorSlotExitCallback;
 import com.alibaba.csp.sentinel.slotchain.ResourceWrapper;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.slots.block.flow.PriorityWaitException;
+import com.alibaba.csp.sentinel.spi.Spi;
+import com.alibaba.csp.sentinel.util.TimeUtil;
+
+import java.util.Collection;
 
 /**
  * <p>
@@ -56,10 +56,15 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
                       boolean prioritized, Object... args) throws Throwable {
         try {
             // Do some checking.
+            // 调用SlotChain中后续的所有slot,完成所有规则检测
+            // 其在执行过程中可能会抛出异常，例如：规则检测未通过，抛出BlockException
             fireEntry(context, resourceWrapper, node, count, prioritized, args);
 
             // Request passed, add thread count and pass count.
+            // 代码能走到这里，说明前面所有规则检测全部通过，此时就可以将该请求统计到相应数据中了
+            // 增加线程数据
             node.increaseThreadNum();
+            // 增加通过的请求数量
             node.addPassRequest(count);
 
             if (context.getCurEntry().getOriginNode() != null) {

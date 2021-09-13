@@ -15,16 +15,16 @@
  */
 package com.alibaba.csp.sentinel.node;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.LongAdder;
-
 import com.alibaba.csp.sentinel.node.metric.MetricNode;
 import com.alibaba.csp.sentinel.slots.statistic.metric.ArrayMetric;
 import com.alibaba.csp.sentinel.slots.statistic.metric.Metric;
 import com.alibaba.csp.sentinel.util.TimeUtil;
 import com.alibaba.csp.sentinel.util.function.Predicate;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * <p>The statistic node keep three kinds of real-time statistics metrics:</p>
@@ -92,6 +92,9 @@ public class StatisticNode implements Node {
     /**
      * Holds statistics of the recent {@code INTERVAL} milliseconds. The {@code INTERVAL} is divided into time spans
      * by given {@code sampleCount}.
+     * 保存最近INTERVAL毫秒的统计信息。 INTERVAL按给定的sampleCount划分为时间跨度。
+     * SAMPLE_COUNT 样本窗口数量，默认值2
+     * INTERVAL 时间窗长度，默认值1000ms
      */
     private transient volatile Metric rollingCounterInSecond = new ArrayMetric(SampleCountProperty.SAMPLE_COUNT,
         IntervalProperty.INTERVAL);
@@ -99,6 +102,7 @@ public class StatisticNode implements Node {
     /**
      * Holds statistics of the recent 60 seconds. The windowLengthInMs is deliberately set to 1000 milliseconds,
      * meaning each bucket per second, in this way we can get accurate statistics of each second.
+     * 保存最近 60 秒的统计信息。 windowLengthInMs 特意设置为 1000 毫秒，意思是每桶每秒，这样我们就可以得到每一秒的准确统计。
      */
     private transient Metric rollingCounterInMinute = new ArrayMetric(60, 60 * 1000, false);
 
@@ -198,6 +202,9 @@ public class StatisticNode implements Node {
 
     @Override
     public double passQps() {
+        // rollingCounterInSecond.pass() 当前时间窗中统计的通过的请求数量
+        // rollingCounterInSecond.getWindowIntervalInSec() 时间窗长度
+        // 相除结果为QPS
         return rollingCounterInSecond.pass() / rollingCounterInSecond.getWindowIntervalInSec();
     }
 
@@ -244,6 +251,7 @@ public class StatisticNode implements Node {
 
     @Override
     public void addPassRequest(int count) {
+        // 为滑动计数器增加本次访问的数量
         rollingCounterInSecond.addPass(count);
         rollingCounterInMinute.addPass(count);
     }
